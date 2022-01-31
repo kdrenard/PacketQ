@@ -61,6 +61,9 @@ static void usage(char* argv0, bool longversion)
         "  --limit packets |\n"
         "  -l packets        Set maximum number of packets to process, from all\n"
         "                    files and not per file.\n"
+        "  --netmask <v4:v6> Set the IPv4 and IPv6 netmasks for the src_subnet\n"
+        "                    and dst_subnet fields as a number of bits.  Example\n"
+        "                    \"--netmask 24:48\".  Defaults are 24 and 48 respectively.\n"
         "  --version | -v    Display version and exit.\n"
         "  --help | -h       Display this help.\n"
         "\n"
@@ -87,8 +90,8 @@ static void usage(char* argv0, bool longversion)
         "example> packetq --csv -s \"select count(*) as mycount, protocol from dns group by protocol;\" myfile.pcap\n"
         "\n"
         "Packet fields (available in all tables):\n"
-        "  id, s, us, ether_type, src_addr, src_port, dst_addr, dst_port, protocol,\n"
-        "  ip_ttl, ip_version, fragments\n"
+        "  id, s, us, ether_type, src_addr, src_port, src_subnet, dst_addr, dst_port, protocol,\n"
+        "  dst_subnet, protocol, ip_ttl, ip_version, fragments\n"
         "\"dns\" table fields:\n"
         "  qname, aname, msg_id, msg_size, opcode, rcode, extended_rcode,\n"
         "  edns_version, z, udp_size, qd_count, an_count, ns_count, ar_count,\n"
@@ -143,6 +146,7 @@ void sigproc(int sig)
     signal(SIGPIPE, sigproc);
 }
 
+extern NetMasks g_netmasks;
 PacketQ* g_app = new PacketQ();
 
 } // namespace packetq
@@ -212,6 +216,7 @@ int main(int argc, char* argv[])
             { "rfc1035", 0, 0, 10000 },
             { "help", 0, 0, 'h' },
             { "version", 0, 0, 'v' },
+            { "netmask", 1, 0, 'n' },
             { NULL, 0, 0, 0 }
         };
 
@@ -261,6 +266,9 @@ int main(int argc, char* argv[])
             break;
         case 'p':
             port = atoi(optarg);
+            break;
+        case 'n':
+            g_netmasks.set_netmask (optarg);
             break;
         case 10000: // rfc1035
             g_app->set_escape(true);

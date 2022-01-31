@@ -36,6 +36,7 @@ namespace packetq {
 Payload  g_payload;
 Output   g_output;
 Str_conv converter;
+NetMasks g_netmasks;
 
 class Fragments {
 private:
@@ -186,6 +187,8 @@ void IP_header::reset()
 {
     memset(&src_ip, 0, sizeof(in6addr_t));
     memset(&dst_ip, 0, sizeof(in6addr_t));
+    memset(&src_subnet, 0, sizeof(in6addr_t));
+    memset(&dst_subnet, 0, sizeof(in6addr_t));
     fragments  = 0;
     offset     = 0;
     ident      = 0;
@@ -222,6 +225,8 @@ int IP_header::decode(unsigned char* data, int itype, int i_id)
 
         src_ip.__in6_u.__u6_addr32[3] = get_int(&data[12]);
         dst_ip.__in6_u.__u6_addr32[3] = get_int(&data[16]);
+        src_subnet.__in6_u.__u6_addr32[3] = src_ip.__in6_u.__u6_addr32[3] & g_netmasks.v4_subnet_mask.__in6_u.__u6_addr32[3];
+        dst_subnet.__in6_u.__u6_addr32[3] = dst_ip.__in6_u.__u6_addr32[3] & g_netmasks.v4_subnet_mask.__in6_u.__u6_addr32[3];
 
         int totallen = get_short(&data[2]);
         length       = totallen - header_len;
@@ -248,6 +253,16 @@ int IP_header::decode(unsigned char* data, int itype, int i_id)
         dst_ip.__in6_u.__u6_addr32[2] = get_int(&data[28]);
         dst_ip.__in6_u.__u6_addr32[1] = get_int(&data[32]);
         dst_ip.__in6_u.__u6_addr32[0] = get_int(&data[36]);
+
+        src_subnet.__in6_u.__u6_addr32[3] = src_ip.__in6_u.__u6_addr32[3] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[3];
+        src_subnet.__in6_u.__u6_addr32[2] = src_ip.__in6_u.__u6_addr32[2] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[2];
+        src_subnet.__in6_u.__u6_addr32[1] = src_ip.__in6_u.__u6_addr32[1] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[1];
+        src_subnet.__in6_u.__u6_addr32[0] = src_ip.__in6_u.__u6_addr32[0] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[0];
+
+        dst_subnet.__in6_u.__u6_addr32[3] = dst_ip.__in6_u.__u6_addr32[3] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[3];
+        dst_subnet.__in6_u.__u6_addr32[2] = dst_ip.__in6_u.__u6_addr32[2] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[2];
+        dst_subnet.__in6_u.__u6_addr32[1] = dst_ip.__in6_u.__u6_addr32[1] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[1];
+        dst_subnet.__in6_u.__u6_addr32[0] = dst_ip.__in6_u.__u6_addr32[0] & g_netmasks.v6_subnet_mask.__in6_u.__u6_addr32[0];
 
         data += 40;
         len += 40;
@@ -438,6 +453,8 @@ void IP_header_to_table::add_packet_columns(Packet_handler& packet_handler)
     packet_handler.add_packet_column("dst_port", "", Coltype::_int, COLUMN_DST_PORT);
     packet_handler.add_packet_column("src_addr", "", Coltype::_text, COLUMN_SRC_ADDR);
     packet_handler.add_packet_column("dst_addr", "", Coltype::_text, COLUMN_DST_ADDR);
+    packet_handler.add_packet_column("src_subnet", "", Coltype::_text, COLUMN_SRC_SUBNET);
+    packet_handler.add_packet_column("dst_subnet", "", Coltype::_text, COLUMN_DST_SUBNET);
     packet_handler.add_packet_column("protocol", "", Coltype::_int, COLUMN_PROTOCOL);
     packet_handler.add_packet_column("ip_ttl", "", Coltype::_int, COLUMN_IP_TTL);
     packet_handler.add_packet_column("ip_version", "", Coltype::_int, COLUMN_IP_VERSION);
@@ -448,6 +465,8 @@ void IP_header_to_table::on_table_created(Table* table, const std::vector<int>& 
 {
     acc_src_addr   = table->get_accessor<text_column>("src_addr");
     acc_dst_addr   = table->get_accessor<text_column>("dst_addr");
+    acc_src_subnet = table->get_accessor<text_column>("src_subnet");
+    acc_dst_subnet = table->get_accessor<text_column>("dst_subnet");
     acc_ether_type = table->get_accessor<int_column>("ether_type");
     acc_protocol   = table->get_accessor<int_column>("protocol");
     acc_ip_ttl     = table->get_accessor<int_column>("ip_ttl");
@@ -519,6 +538,18 @@ void IP_header_to_table::assign(Row* row, IP_header* head, const std::vector<int
                 acc_dst_addr.value(row) = v4_addr2str(head->dst_ip);
             else
                 acc_dst_addr.value(row) = v6_addr2str(head->dst_ip);
+            break;
+        case COLUMN_SRC_SUBNET:
+            if (head->ethertype == 2048)
+                acc_src_subnet.value(row) = v4_addr2str(head->src_subnet);
+            else
+                acc_src_subnet.value(row) = v6_addr2str(head->src_subnet);
+            break;
+        case COLUMN_DST_SUBNET:
+            if (head->ethertype == 2048)
+                acc_dst_subnet.value(row) = v4_addr2str(head->dst_subnet);
+            else
+                acc_dst_subnet.value(row) = v6_addr2str(head->dst_subnet);
             break;
         }
     }

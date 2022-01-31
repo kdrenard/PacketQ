@@ -14,6 +14,8 @@ the dns table, presented as JSON identifiers.
       { "name": "dst_port","type": "int" },
       { "name": "src_addr","type": "text" },
       { "name": "dst_addr","type": "text" },
+      { "name": "src_subnet","type": "text" },
+      { "name": "dst_subnet","type": "text" },
       { "name": "protocol","type": "int" },
       { "name": "ip_ttl","type": "int" },
       { "name": "ip_version","type": "int" },

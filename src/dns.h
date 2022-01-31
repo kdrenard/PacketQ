@@ -509,6 +509,8 @@ private:
     Bool_accessor acc_edns0_ecs;
     Text_accessor acc_qname;
     Text_accessor acc_aname;
+    Text_accessor acc_src_subnet;
+    Text_accessor acc_dst_subnet;
     Text_accessor acc_src_addr;
     Text_accessor acc_dst_addr;
     Text_accessor acc_edns0_ecs_address;

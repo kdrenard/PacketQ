@@ -79,6 +79,58 @@ public:
     }
 };
 
+class NetMasks {
+public:
+    NetMasks () {
+        set_netmask (24, 48);
+    };
+
+    void set_netmask (char *arg) {
+	char *cp1, *cp2, *end;
+	int v4_bits, v6_bits;
+
+	if (arg == NULL) return;
+	cp1 = arg;
+        cp2 = strchr (arg, ':');
+	if (cp2 != NULL)
+            *cp2++ = (char)0;
+        v4_bits = strtol (cp1, &end, 10);
+	if (cp1 == end)
+            v4_bits = 24;
+	if (cp2 != NULL) {
+            v6_bits = strtol (cp2, &end, 10);
+            if (cp2 == end) v6_bits = 48;
+	} else {
+            v6_bits = 48;
+	}
+	set_netmask (v4_bits, v6_bits);
+	return;
+    }
+    void set_netmask (int v4_mask_size, int v6_mask_size) {
+	if (v4_mask_size > 32)
+            v4_mask_size = 32;
+	else if (v4_mask_size < 0)
+            v4_mask_size = 0;
+        v4_subnet_mask.__in6_u.__u6_addr32[3] = (int32_t) 0x80000000 >> (v4_mask_size - 1);
+
+	if (v6_mask_size > 128)
+            v6_mask_size = 128;
+	else if (v6_mask_size < 0)
+            v6_mask_size = 0;
+        for (int i = 0; i < 4; i++) {
+            if (v6_mask_size >= 32)
+                v6_subnet_mask.__in6_u.__u6_addr32[3-i] = 0xffffffff;
+            else
+                v6_subnet_mask.__in6_u.__u6_addr32[3-i] = (int32_t)0x80000000 >> (v6_mask_size - 1);
+            v6_mask_size -= 32;
+            if (v6_mask_size <= 0) break;
+        }
+        return;
+    }
+    in6addr_t v4_subnet_mask;
+    in6addr_t v6_subnet_mask;
+};
+
 class IP_header {
 public:
     IP_header()
@@ -98,6 +150,8 @@ public:
     {
         memset(&src_ip, 0, sizeof(src_ip));
         memset(&dst_ip, 0, sizeof(dst_ip));
+        memset(&src_subnet, 0, sizeof(src_subnet));
+        memset(&dst_subnet, 0, sizeof(dst_subnet));
     }
 
     void           reset();
@@ -107,6 +161,8 @@ public:
     unsigned short ethertype;
     in6addr_t      src_ip;
     in6addr_t      dst_ip;
+    in6addr_t      src_subnet;
+    in6addr_t      dst_subnet;
     unsigned short src_port;
     unsigned short dst_port;
     unsigned short proto;
@@ -135,6 +191,8 @@ public:
         COLUMN_DST_PORT,
         COLUMN_SRC_ADDR,
         COLUMN_DST_ADDR,
+        COLUMN_SRC_SUBNET,
+        COLUMN_DST_SUBNET,
         COLUMN_FRAGMENTS
     };
 
@@ -155,6 +213,8 @@ private:
     Int_accessor  acc_fragments;
     Text_accessor acc_src_addr;
     Text_accessor acc_dst_addr;
+    Text_accessor acc_src_subnet;
+    Text_accessor acc_dst_subnet;
 };
 
 class Packet {
